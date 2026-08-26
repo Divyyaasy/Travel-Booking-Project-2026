@@ -19,12 +19,30 @@ pipeline {
                     url: 'https://github.com/Divyyaasy/Travel-Booking-Project-2026.git'
             }
         }
+stage('Build') {
+    steps {
+        sh '''
+            echo "===== JAVA ====="
+            which java
+            java -version
 
-        stage('Build') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
+            echo "===== JAVAC ====="
+            which javac
+            javac -version
+
+            echo "===== JAVA_HOME ====="
+            echo "$JAVA_HOME"
+
+            echo "===== MAVEN ====="
+            which mvn
+            mvn -version
+
+            echo "===== BUILD ====="
+            mvn clean package -DskipTests
+        '''
+    }
+}
+        
 
         stage('Unit Test') {
             steps {
