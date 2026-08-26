@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: travel-booking-service
+
+spec:
+
+  type: NodePort
+
+  selector:
+    app: travel-booking-app
+
+  ports:
+
+  - port: 8081
+
+    targetPort: 8081
+
+    nodePort: 30081

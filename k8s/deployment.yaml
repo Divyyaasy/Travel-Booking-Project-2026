@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: travel-booking-app
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: travel-booking-app
+
+  template:
+
+    metadata:
+      labels:
+        app: travel-booking-app
+
+    spec:
+
+      containers:
+
+      - name: travel-booking-app
+
+        image: 858688938415.dkr.ecr.ap-south-1.amazonaws.com/travel-booking-app:1.0
+
+        imagePullPolicy: Always
+
+        ports:
+
+        - containerPort: 8081
+
+        env:
+
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://travel-booking-db.cr6s8a6oidgz.ap-south-1.rds.amazonaws.com:3306/traveldb
+
+        - name: SPRING_DATASOURCE_USERNAME
+          value: admin
+
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: admin*123
