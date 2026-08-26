@@ -2,10 +2,13 @@ pipeline {
 
     agent any
 
-
     environment {
-        IMAGE_NAME = "swapnilwaghmare/travel-booking-app"
+        AWS_REGION = 'ap-south-1'
+        AWS_ACCOUNT_ID = '858688938415'
+        ECR_REPOSITORY = 'travel-booking-app'
+        EKS_CLUSTER = 'travel-booking-eks'
         IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
     }
 
     stages {
@@ -13,69 +16,90 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/waghmareswapnil21/travel-booking-app.git'
+                    url: 'https://github.com/Divyyaasy/Travel-Booking-Project-2026.git'
             }
         }
 
         stage('Build') {
             steps {
-                dir('travel-booking-app') {
-            sh 'mvn clean package -DskipTests'
-        }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Unit Test') {
             steps {
-               dir('travel-booking-app') {
-            sh 'mvn clean package -DskipTests'
-        }
+                sh 'mvn test'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir('travel-booking-app') {
-            sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
-        }
+                sh 'docker build -t ${IMAGE_URI} .'
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Login to ECR') {
             steps {
-                withCredentials([usernamePassword(
-                        credentialsId: 'docker',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS')]) {
-
-                    sh '''
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                    '''
-                }
+                sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} |
+                    docker login --username AWS --password-stdin \
+                    ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                '''
             }
-            stage('Deploy to Kubernetes') {
-    steps {
-        dir('travel-booking-app') {
-            sh '''
-            kubectl apply -f k8s/deployment.yaml
-            kubectl apply -f k8s/service.yaml
-            kubectl port-forward --address 0.0.0.0 service/travel-booking-service 8081:8081
-            '''
         }
-    }
-}
+
+        stage('Push Image to ECR') {
+            steps {
+                sh 'docker push ${IMAGE_URI}'
+            }
+        }
+
+        stage('Configure EKS') {
+            steps {
+                sh '''
+                    aws eks update-kubeconfig \
+                    --region ${AWS_REGION} \
+                    --name ${EKS_CLUSTER}
+                '''
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+                    sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" k8s/deployment.yaml > k8s/deployment-ci.yaml
+
+                    kubectl apply -f k8s/deployment-ci.yaml
+                    kubectl apply -f k8s/service.yaml
+
+                    kubectl rollout status deployment/travel-booking-app --timeout=180s
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    echo "===== PODS ====="
+                    kubectl get pods -o wide
+
+                    echo "===== SERVICE ====="
+                    kubectl get service travel-booking-service
+
+                    echo "===== DEPLOYMENT ====="
+                    kubectl get deployment travel-booking-app
+                '''
+            }
         }
     }
 
     post {
         success {
-            echo 'Pipeline executed successfully.'
+            echo 'Travel Booking CI/CD pipeline completed successfully.'
         }
 
         failure {
-            echo 'Pipeline failed.'
+            echo 'Travel Booking CI/CD pipeline failed.'
         }
     }
 }

@@ -23,7 +23,7 @@ spec:
 
       - name: travel-booking-app
 
-        image: 858688938415.dkr.ecr.ap-south-1.amazonaws.com/travel-booking-app:1.0
+        image: IMAGE_PLACEHOLDER
 
         imagePullPolicy: Always
 
