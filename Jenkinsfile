@@ -1,12 +1,18 @@
+
+```groovy
 pipeline {
 
     agent any
 
     environment {
+        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+
         AWS_REGION = 'ap-south-1'
         AWS_ACCOUNT_ID = '858688938415'
         ECR_REPOSITORY = 'travel-booking-app'
         EKS_CLUSTER = 'travel-booking-eks'
+
         IMAGE_TAG = "${BUILD_NUMBER}"
         IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
     }
@@ -19,30 +25,30 @@ pipeline {
                     url: 'https://github.com/Divyyaasy/Travel-Booking-Project-2026.git'
             }
         }
-stage('Build') {
-    steps {
-        sh '''
-            echo "===== JAVA ====="
-            which java
-            java -version
 
-            echo "===== JAVAC ====="
-            which javac
-            javac -version
+        stage('Build') {
+            steps {
+                sh '''
+                    echo "===== JAVA ====="
+                    which java
+                    java -version
 
-            echo "===== JAVA_HOME ====="
-            echo "$JAVA_HOME"
+                    echo "===== JAVAC ====="
+                    which javac
+                    javac -version
 
-            echo "===== MAVEN ====="
-            which mvn
-            mvn -version
+                    echo "===== JAVA_HOME ====="
+                    echo "$JAVA_HOME"
 
-            echo "===== BUILD ====="
-            mvn clean package -DskipTests
-        '''
-    }
-}
-        
+                    echo "===== MAVEN ====="
+                    which mvn
+                    mvn -version
+
+                    echo "===== BUILD ====="
+                    mvn clean package -DskipTests
+                '''
+            }
+        }
 
         stage('Unit Test') {
             steps {
@@ -85,12 +91,15 @@ stage('Build') {
         stage('Deploy to EKS') {
             steps {
                 sh '''
-                    sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" k8s/deployment.yaml > k8s/deployment-ci.yaml
+                    sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
+                    k8s/deployment.yaml > k8s/deployment-ci.yaml
 
                     kubectl apply -f k8s/deployment-ci.yaml
                     kubectl apply -f k8s/service.yaml
 
-                    kubectl rollout status deployment/travel-booking-app --timeout=180s
+                    kubectl rollout status \
+                    deployment/travel-booking-app \
+                    --timeout=180s
                 '''
             }
         }
@@ -112,6 +121,7 @@ stage('Build') {
     }
 
     post {
+
         success {
             echo 'Travel Booking CI/CD pipeline completed successfully.'
         }
@@ -121,3 +131,4 @@ stage('Build') {
         }
     }
 }
+```
